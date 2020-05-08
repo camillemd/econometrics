@@ -116,16 +116,16 @@ correlation_SP = correlation_matrix[1,]
 non_parametric(correlation_SP, 'Correlation', 'Frequency')
 
 #### QUESTION 3 ####
+
+## 2007 ##
+
 ##SP500##
 diff_SP_500_2007= diff_SP500[year(row.names(diff_SP500)) < "2007",]
 
 ##Stock##
 diff_stock_2007 = diff_stock[year(row.names(diff_stock)) < "2007",]
 diff_stock_2007 = diff_stock_2007[,colSums(is.na(diff_stock_2007))<nrow(diff_stock_2007)]
-
 diff_stock_2007=as.data.frame(diff_stock_2007)
-plot(diff_stock_2007$TT.Adjusted)
-
 
 #Basic Statistics
 
@@ -147,12 +147,52 @@ non_parametric(stock_stats = skewness_stock, 'Skewness', 'Frequency')
 # kurtosis
 non_parametric(stock_stats = kurtosis_stock, 'Kurtosis', 'Frequency')
 
-full_df = cbind(diff_SP_500_2007, diff_stock_2007)
-correlation_matrix = cor(full_df, use="complete.obs")
-correlation_SP = correlation_matrix[1,]
+full_df_2007 = cbind(diff_SP_500_2007, diff_stock_2007)
+correlation_matrix_2007 = cor(full_df_2007, use="complete.obs")
+correlation_SP_2007 = correlation_matrix_2007[1,]
+
+# Compute non parametric density and plot the graph
+non_parametric(correlation_SP_2007, 'Correlation', 'Frequency')
+
+## 2009 ##
+
+##SP500##
+diff_SP_500_2009= diff_SP500[year(row.names(diff_SP500)) > "2009",]
+
+##Stock##
+diff_stock_2009 = diff_stock[year(row.names(diff_stock)) > "2009",]
+diff_stock_2009 = diff_stock_2009[,colSums(is.na(diff_stock_2009))<nrow(diff_stock_2009)]
+diff_stock_2009=as.data.frame(diff_stock_2009)
+
+#Basic Statistics
+
+mean_stock = colMeans(diff_stock_2009, na.rm = TRUE, dims = 1) 
+variance_stock = colVars(diff_stock_2009, na.rm = TRUE)
+skewness_stock = colSkewness(diff_stock_2009, na.rm = TRUE)
+kurtosis_stock = colKurtosis(diff_stock_2009, na.rm = TRUE)
+statistics_stock_2009 = as.matrix(cbind(mean_stock,variance_stock,skewness_stock,kurtosis_stock))
 
 
-stock_2009 = stock[year(stock$date) < "2009",]
+
+# Compute non parametric density and plot the graph
+# mean
+non_parametric(stock_stats = mean_stock, 'Mean', 'Frequency')
+# variance
+non_parametric(stock_stats = variance_stock, 'Variance', 'Frequency')
+# skewness
+non_parametric(stock_stats = skewness_stock, 'Skewness', 'Frequency')
+# kurtosis
+non_parametric(stock_stats = kurtosis_stock, 'Kurtosis', 'Frequency')
+
+full_df_2009 = cbind(diff_SP_500_2009, diff_stock_2009)
+correlation_matrix_2009 = cor(full_df_2009, use="complete.obs")
+correlation_SP_2009 = correlation_matrix_2009[1,]
+
+# Compute non parametric density and plot the graph
+non_parametric(correlation_SP_2009, 'Correlation', 'Frequency')
+
+
+
 
 #### QUESTION 4 ####
 
