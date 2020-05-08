@@ -21,26 +21,24 @@ library(ggplot2)
 start_date = '1900-01-01'
 end_date = toString(Sys.Date()) #today
 
-SP500 = tq_get("^GSPC", from = start_date, to = end_date)
-SP500 = SP500[,c('adjusted')]
-ln_SP500 = log(SP500)
-diff_SP500 = diff(ln_SP500)
-diff_SP500 = diff_SP500[(nrow(diff_SP500)-14687):nrow(diff_SP500),]
+## Stocks ##
 
-# create csv
+# obtain stock values (if csv has not been created)
 companies <- GetSP500Stocks()
-
 stock <- NULL
 
 for (row in gsub('[.]', '-', companies$Tickers)){
   #stock_prices <- tq_get(row, from = start_date, to = end_date)
-  stock_prices = getSymbols(row, from = start_date, src = "yahoo", verbose = FALSE, auto.assign = FALSE)[,6]
+  stock_prices = getSymbols(row, from = start_date, src = "yahoo", 
+                            verbose = FALSE, auto.assign = FALSE)[,6]
   stock = cbind(stock, stock_prices)
 }
+stock = data.frame(stock)
 write.csv(stock,'./data/stock.csv')
 
-# load csv
-stock = read.csv('./data/stock.csv')
+# load csv (faster when the data has already been downloaded)
+stock = read.csv('./data/stock.csv', row.names = 1)
+rows = dim(stock)[1]
 
 # check NA
 sum(is.na(stock))
@@ -48,15 +46,28 @@ sum(is.na(stock))
 #complete = min(which(complete.cases(stock)))
 #stock = stock[complete:nrow(stock),]
 
-# take logs
+# percentage log return
 ln_stock = log(stock) # log price
-diff_stock = diff(ln_stock)*100 # percentage log return
+diff_stock = diff(as.matrix(ln_stock))*100 # percentage log return
+
+## SP500 ##
+
+SP500 = tq_get("^GSPC", from = start_date, to = end_date)
+SP500 = SP500[,c('adjusted')]
+
+# percentage log return 
+ln_SP500 = log(SP500)
+diff_SP500 = diff(ln_SP500)*100 # percentage log return
+diff_SP500 = data.frame(matrix(unlist(ln_SP500), ncol=length(ln_SP500), byrow=T))
+diff_SP500 = data.frame(diff_SP500[(nrow(diff_SP500)-rows-1):nrow(diff_SP500),])
+colnames(diff_SP500) <- c('diff_return')
+
 
 #### QUESTION 1 ####
 
 ## basic statistics
 mean_stock = colMeans(diff_stock, na.rm = TRUE, dims = 1) #mean(diff_stock, na.rm = TRUE)
-variance_stock = colVars(diff_stock, na.rm = TRUE, dims = 1)
+variance_stock = colVars(diff_stock, na.rm = TRUE)
 skewness_stock = colSkewness(diff_stock, na.rm = TRUE)
 kurtosis_stock = colKurtosis(diff_stock, na.rm = TRUE)
 statistics_stock = as.matrix(cbind(mean_stock,variance_stock,skewness_stock,kurtosis_stock))
@@ -70,39 +81,39 @@ hist(skewness_stock, nclass=100, xlab = 'Skewness')
 hist(kurtosis_stock, nclass=100, xlab = 'Kurtosis')
 
 # plot non-parametric densities
-non_parametric <- function(stock_stats){
+non_parametric <- function(stock_stats, xname, yname){
   density <- density(stock_stats, na.rm = TRUE)
   normal <- dnorm(density$x, mean(stock_stats, na.rm = TRUE), sd(stock_stats, na.rm = TRUE))
-  
-  print(mean(stock_stats, na.rm = TRUE))
-  print(sd(stock_stats, na.rm = TRUE))
-  
+
   density_data = tibble(density$x, density$y)
   normal_data = tibble(density$x, normal)
   
   ggplot(density_data, aes(x = density$x, y = density$y)) + 
     geom_point() +
-    geom_line(aes(x = density$x, y = normal), data = normal_data, color = 'red')
+    geom_line(aes(x = density$x, y = normal), data = normal_data, color = 'red') + 
+    labs(x = xname, y = yname)
 }
 
 # mean
-non_parametric(stock_stats = mean_stock)
-
+non_parametric(stock_stats = mean_stock, 'Mean', 'Frequency')
 # variance
-non_parametric(stock_stats = variance_stock)
-
+non_parametric(stock_stats = variance_stock, 'Variance', 'Frequency')
 # skewness
-non_parametric(stock_stats = skewness_stock)
-
+non_parametric(stock_stats = skewness_stock, 'Skewness', 'Frequency')
 # kurtosis
-non_parametric(stock_stats = kurtosis_stock)
+non_parametric(stock_stats = kurtosis_stock, 'Kurtosis', 'Frequency')
 
 #### QUESTION 2 ####
+
 #for (i in dim())
+full_df = cbind(diff_SP500, diff_stock)
 correlation = cor(diff_SP500, diff_stock$MMM.Adjusted, use="complete.obs")
 
 #### QUESTION 3 ####
+stock_2007 = stock[year(stock$date) < "2007",]
 
+
+stock_2009 = stock[year(stock$date) < "2009",]
 
 #### QUESTION 4 ####
 
