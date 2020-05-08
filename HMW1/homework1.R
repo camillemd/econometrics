@@ -16,12 +16,13 @@ library(BatchGetSymbols)
 library(timeSeries)
 library(ggplot2)
 
+
 #### DATA ####
 
 start_date = '1900-01-01'
 end_date = toString(Sys.Date()) #today
 
-## Stocks ##
+########## Stocks ########## 
 
 # obtain stock values (if csv has not been created)
 companies <- GetSP500Stocks()
@@ -38,7 +39,7 @@ write.csv(stock,'./data/stock.csv')
 
 # load csv (faster when the data has already been downloaded)
 stock = read.csv('./data/stock.csv', row.names = 1)
-rows = dim(stock)[1]
+
 
 # check NA
 sum(is.na(stock))
@@ -49,17 +50,19 @@ sum(is.na(stock))
 # percentage log return
 ln_stock = log(stock) # log price
 diff_stock = diff(as.matrix(ln_stock))*100 # percentage log return
+rows = dim(diff_stock)[1]
 
-## SP500 ##
+########## SP500 ########## 
+library(tidyverse)
 
-SP500 = tq_get("^GSPC", from = start_date, to = end_date)
-SP500 = SP500[,c('adjusted')]
+SP500 = getSymbols('^GSPC', from = start_date, src = "yahoo", 
+                   verbose = FALSE, auto.assign = FALSE)[,6]
 
 # percentage log return 
 ln_SP500 = log(SP500)
-diff_SP500 = diff(ln_SP500)*100 # percentage log return
-diff_SP500 = data.frame(matrix(unlist(ln_SP500), ncol=length(ln_SP500), byrow=T))
-diff_SP500 = data.frame(diff_SP500[(nrow(diff_SP500)-rows-1):nrow(diff_SP500),])
+diff_SP500 = diff(as.matrix(ln_SP500))*100 # percentage log return
+#diff_SP500 = data.frame(matrix(unlist(ln_SP500), ncol=length(ln_SP500), byrow=T))
+diff_SP500 = data.frame(diff_SP500[(nrow(diff_SP500)-rows+1):nrow(diff_SP500),])
 colnames(diff_SP500) <- c('diff_return')
 
 
@@ -105,12 +108,48 @@ non_parametric(stock_stats = kurtosis_stock, 'Kurtosis', 'Frequency')
 
 #### QUESTION 2 ####
 
-#for (i in dim())
 full_df = cbind(diff_SP500, diff_stock)
-correlation = cor(diff_SP500, diff_stock$MMM.Adjusted, use="complete.obs")
+correlation_matrix = cor(full_df, use="complete.obs")
+correlation_SP = correlation_matrix[1,]
+
+# Compute non parametric density and plot the graph
+non_parametric(correlation_SP, 'Correlation', 'Frequency')
 
 #### QUESTION 3 ####
-stock_2007 = stock[year(stock$date) < "2007",]
+##SP500##
+diff_SP_500_2007= diff_SP500[year(row.names(diff_SP500)) < "2007",]
+
+##Stock##
+diff_stock_2007 = diff_stock[year(row.names(diff_stock)) < "2007",]
+diff_stock_2007 = diff_stock_2007[,colSums(is.na(diff_stock_2007))<nrow(diff_stock_2007)]
+
+diff_stock_2007=as.data.frame(diff_stock_2007)
+plot(diff_stock_2007$TT.Adjusted)
+
+
+#Basic Statistics
+
+mean_stock = colMeans(diff_stock_2007, na.rm = TRUE, dims = 1) 
+variance_stock = colVars(diff_stock_2007, na.rm = TRUE)
+skewness_stock = colSkewness(diff_stock_2007, na.rm = TRUE)
+kurtosis_stock = colKurtosis(diff_stock_2007, na.rm = TRUE)
+statistics_stock_2007 = as.matrix(cbind(mean_stock,variance_stock,skewness_stock,kurtosis_stock))
+
+
+
+# Compute non parametric density and plot the graph
+# mean
+non_parametric(stock_stats = mean_stock, 'Mean', 'Frequency')
+# variance
+non_parametric(stock_stats = variance_stock, 'Variance', 'Frequency')
+# skewness
+non_parametric(stock_stats = skewness_stock, 'Skewness', 'Frequency')
+# kurtosis
+non_parametric(stock_stats = kurtosis_stock, 'Kurtosis', 'Frequency')
+
+full_df = cbind(diff_SP_500_2007, diff_stock_2007)
+correlation_matrix = cor(full_df, use="complete.obs")
+correlation_SP = correlation_matrix[1,]
 
 
 stock_2009 = stock[year(stock$date) < "2009",]
