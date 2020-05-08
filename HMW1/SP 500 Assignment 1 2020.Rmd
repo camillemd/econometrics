@@ -1,0 +1,623 @@
+---
+title: "Financial Econometrics - Homework 1"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE, error=TRUE, message=FALSE, results=FALSE)
+```
+
+## 1) Introduction
+
+The following document aims to (i) study the cross section of stock returns analyzing the first four moments and correlation of each stock with the underlying stock market index under study, (ii) analyze the stability over time of the descriptive statistics of stocks return, and (iii) study each stock contribution to the 2019 year return of the S&P500 index.
+
+## 2) Moments of Stock Returns
+After downloading from Yahoo Finance the 505 stocks' adjusted prices that compose the S&P500 index from 1962-01-02 up to date and calculating their log-returns, we have derived the nonparametric densities of the first four moments of the log-returns which are plotted here below.
+
+Since our aim is to see whether or not the densities of the moments of the stocks' log-returns are close to the normal densities, the red lines will be showing the non parametric densities, while the black lines will be showing the normal densities with means and variances equal to the means and variances of the plotted variables.
+
+```{r}
+
+####################################################### 1 #######################################################
+
+########### Computing the first 4 moments of each stock with the S&P 500 index return ###########
+
+## A dataframe that includes a column with the list of tickers of companies that belong to the SP500 index
+#install.packages("BatchGetSymbols")
+library("BatchGetSymbols")
+df.SP500 <- GetSP500Stocks()
+
+##Creating empty stocks list
+Stocks <- NULL
+
+##creating loop for downloading Tickers 
+#install.packages("quantmod")
+library("quantmod")
+StartingDate <- "1900-01-01"
+for(i in gsub('[.]', '-', df.SP500$Tickers)) {
+  Stocks <- cbind(Stocks,getSymbols(i,from = StartingDate,src = "yahoo", verbose = FALSE, auto.assign = FALSE)[,6])
+}
+
+##Calculating log prices and log returns
+ln.Stocks.prices = log(Stocks)
+ln.Stocks.returns = diff(ln.Stocks.prices)*100
+
+########### Computing descriptive statistics ###########
+#install.packages("matrixStats")
+#install.packages("moments")
+library("matrixStats")
+library("moments")
+
+mu.1 <- colMeans(ln.Stocks.returns,na.rm = TRUE)
+sig2.1 <- matrixStats::colVars(ln.Stocks.returns, na.rm = TRUE)
+sk.1 <- moments::skewness(ln.Stocks.returns,na.rm = TRUE)
+ku.1 <- moments::kurtosis(ln.Stocks.returns,na.rm = TRUE)
+
+Statistics <- NULL
+Statistics <- cbind(Statistics, mu.1, sig2.1, sk.1, ku.1)
+
+########### Graphical Analysis ###########
+
+##histogram and kernel density estimate for means
+library(fBasics)
+#hist(mu, nclass=75, xlab="Means", main=c("Statistics", "histogram"))
+
+d1 <- density(mu.1, na.rm = TRUE)
+dn1 <- dnorm(d1$x, mean(mu.1, na.rm = TRUE), sd(mu.1, na.rm = TRUE))
+
+##histogram and kernel density estimate for variances
+#hist(sig2.1, nclass=75, xlab="Variances", main=c("Statistics", "histogram"))
+
+d2 <- density(sig2.1, na.rm = TRUE)
+dn2 <- dnorm(d2$x, mean(sig2.1, na.rm = TRUE), sd(sig2.1, na.rm = TRUE))
+
+##histogram and kernel density estimate for skewnessness
+#hist(sk.1, nclass=75, xlab="Skewnesses", main=c("Statistics", "histogram"))
+
+d3 <- density(sk.1, na.rm = TRUE)
+dn3 <- dnorm(d3$x, mean(sk.1, na.rm = TRUE), sd(sk.1, na.rm = TRUE))
+
+##histogram and kernel density estimate for kurtosis
+#hist(ku.1, nclass=75, xlab="kurtosis", main=c("Statistics", "histogram"))
+
+d4 <- density(ku.1, na.rm = TRUE)
+dn4 <- dnorm(d4$x, mean(ku.1, na.rm = TRUE), sd(ku.1, na.rm = TRUE))
+
+```
+```{r results=TRUE}
+plot(d1$x,d1$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Means", ylab="Density")
+lines(d1$x,dn1)
+
+library(knitr)
+mean <-mean(mu.1, na.rm = TRUE)
+median <- median(mu.1, na.rm = TRUE)
+sd <- sd(mu.1, na.rm = TRUE)
+kurtosis <- moments::kurtosis(mu.1, na.rm = TRUE)
+skewness <- moments::skewness(mu.1, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+The plot shows that the non parametric density of the means is slighlty different from the normal density with mean and variance equal to the mean and variance of the plotted means. Indeed, the kurtosis is equal to 8.54, suggesting havier tails  than the ones that the normal distribution presents, the skewness is slightly positive, and mean and median are close to each other and to the value of 0.056%.
+
+```{r results=TRUE}
+plot(d2$x,d2$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Variances", ylab="Density")
+lines(d2$x,dn2)
+
+library(knitr)
+mean <-mean(sig2.1, na.rm = TRUE)
+median <- median(sig2.1, na.rm = TRUE)
+sd <- sd(sig2.1, na.rm = TRUE)
+kurtosis <- moments::kurtosis(sig2.1, na.rm = TRUE)
+skewness <- moments::skewness(sig2.1, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+The plot shows that the non parametric density of the variances is different from the normal one. Hence, not only is presenting a kurtosis of 20.79, but also a positive skewness of roughly 3. The plot, indeed, is showing that the mass of the distribution is concentrated on the left of the figure driving the median (4.60) to fall behind approximately 1 unit from the mean (5.72).
+
+```{r results=TRUE}
+plot(d3$x,d3$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Skewnessness", ylab="Density")
+lines(d3$x,dn3)
+
+library(knitr)
+mean <-mean(sk.1, na.rm = TRUE)
+median <- median(sk.1, na.rm = TRUE)
+sd <- sd(sk.1, na.rm = TRUE)
+kurtosis <- moments::kurtosis(sk.1, na.rm = TRUE)
+skewness <- moments::skewness(sk.1, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+The plot is showing a leptokurtic distribution, with kurtosis of 117, and, therefore, is very different from the normal density with mean and variance equal to the mean and variance of the plotted skewness. There are many observations around the mean of -0.85 and rarely much above the mean.
+
+```{r results=TRUE}
+plot(d4$x,d4$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Kurtosis", ylab="Density")
+lines(d4$x,dn4)
+
+library(knitr)
+mean <-mean(ku.1, na.rm = TRUE)
+median <- median(ku.1, na.rm = TRUE)
+sd <- sd(ku.1, na.rm = TRUE)
+kurtosis <- moments::kurtosis(ku.1, na.rm = TRUE)
+skewness <- moments::skewness(ku.1, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+The plot shows that the non parametric density of the kurtosis is different from the normal one. The median equal to 11.07 compared to the mean equal to 44.54, and the skewness 13.96, made us can infer that most of the observations are far away from the mean and that the distribution presents a fatter left tail with respect to the normal distribution. 
+
+## 3) Correlation coefficients of stock returns with the index
+
+From the same sample used in section (2), we calculated correlation coefficients between each stock and the S&P500 index and plotted nonparametric density of the correlation coefficients of the sample against the normal density with mean and variance equal to the mean and variance of the correlation coefficients of the sample.
+
+```{r}
+####################################################### 2 #######################################################
+
+########### Computing the correlation coefficient of each stock with the S&P 500 index return ###########
+
+#dowloading data of S&P500 index
+library("quantmod")
+#StartingDate <- "1900-01-01"
+GSPC <- NULL
+GSPC <- cbind(GSPC, getSymbols("^GSPC", src = "yahoo", from = StartingDate,verbose = FALSE, auto.assign = FALSE)[,6])
+
+##Calculating log returns.
+ln.GSPC.prices = log(GSPC)
+ln.GSPC.returns = diff(ln.GSPC.prices)*100
+
+##binding Stocks and GSPC matrices
+ln.GSPC.Stocks.returns <- NULL
+ln.GSPC.Stocks.returns <- cbind(ln.GSPC.Stocks.returns, ln.GSPC.returns, ln.Stocks.returns)
+ln.GSPC.Stocks.returns <- ln.GSPC.Stocks.returns[ , ! apply( ln.GSPC.Stocks.returns , 2 , function(x) all(is.na(x)) ) ]
+
+##creating correlation coefficients matrix
+cor.GSPC.Stocks <- NULL
+cor.GSPC.Stocks <- cbind(cor.GSPC.Stocks, cor(ln.GSPC.Stocks.returns, use="complete.obs"))
+cor.GSPC.Stocks <- cor.GSPC.Stocks[,-(2:as.numeric(ncol(ln.GSPC.Stocks.returns)))]
+
+##histogram and kernel density estimate for correlation coefficients
+#hist(cor.GSPC.Stocks, nclass=75, xlab="Means", main=c("Statistics", "histogram"))
+
+d5 <- density(cor.GSPC.Stocks, na.rm = TRUE)
+dn5<- dnorm(d5$x, mean(cor.GSPC.Stocks, na.rm = TRUE), sd(cor.GSPC.Stocks, na.rm = TRUE))
+```
+```{r results=TRUE}
+plot(d5$x,d5$y,type='l', col="red", main=c("GSPC and Stocks", "empirical density vs Gaussian"), xlab="Correlations", ylab="Density")
+lines(d5$x,dn5)
+
+library(knitr)
+mean <-mean(cor.GSPC.Stocks, na.rm = TRUE)
+median <- median(cor.GSPC.Stocks, na.rm = TRUE)
+sd <- sd(cor.GSPC.Stocks, na.rm = TRUE)
+kurtosis <- moments::kurtosis(cor.GSPC.Stocks, na.rm = TRUE)
+skewness <- moments::skewness(cor.GSPC.Stocks, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+
+This plot shows that the density of the correlation coefficients is very similar to the normal density. Indeed, it has a skewness of -0.49 and a kurtosis of 2.89, from which we infer that mean and median are very close to each other and are approximately 0.52. Furthermore, there ara more observations around the interval 0.55-0.65 and 0.15-0.25 than what the normal density would have predicted.
+
+## 4) Analysis of the period before and after the crisis
+
+In order to see whether log-returns have a different behavior for the period before and after the financial crisis. We have splitted our sample into two sub-samples with observations going from 1962-01-02 to 2007-06-30 and from 2007-07-01 up to date. In this section, the first plot is always representing sub-sample 1, while the second plot is representing sub-sample 2.
+
+```{r}
+####################################################### 3 #######################################################
+
+####### Computing the first 4 moments of each stock with the S&P 500 index return with period before and after crisis ########
+
+########### before crisis ###########
+
+##Creating new stocks list for period before 30/06/2007
+Stocks2 <- NULL
+Stocks2 <- Stocks[-(11453:nrow(Stocks)),]
+
+##Calculating log prices and log returns.
+ln.Stocks2.prices = log(Stocks2)
+ln.Stocks2.returns = diff(ln.Stocks2.prices)*100
+
+########### Computing descriptive statistics ###########
+#install.packages("matrixStats")
+#install.packages("moments")
+#library("matrixStats")
+#library("moments")
+
+mu.2 <- colMeans(ln.Stocks2.returns,na.rm = TRUE)
+sig2.2 <- matrixStats::colVars(ln.Stocks2.returns, na.rm = TRUE)
+sk.2 <- moments::skewness(ln.Stocks2.returns,na.rm = TRUE)
+ku.2 <- moments::kurtosis(ln.Stocks2.returns,na.rm = TRUE)
+
+Statistics2 <- NULL
+Statistics2 <- cbind(Statistics2, mu.2, sig2.2, sk.2, ku.2)
+
+########### Graphical Analysis ###########
+
+##histogram and kernel density estimate for means
+library(fBasics)
+#hist(mu.2, nclass=75, xlab="Means", main=c("Statistics", "histogram"))
+
+d1.1 <- density(mu.2, na.rm = TRUE)
+dn1.1 <- dnorm(d1.1$x, mean(mu.2, na.rm = TRUE), sd(mu.2, na.rm = TRUE))
+
+##histogram and kernel density estimate for variances
+#hist(sig2.2, nclass=75, xlab="Variances", main=c("Statistics", "histogram"))
+
+d1.2 <- density(sig2.2, na.rm = TRUE)
+dn1.2 <- dnorm(d1.2$x, mean(sig2.2, na.rm = TRUE), sd(sig2.2, na.rm = TRUE))
+
+##histogram and kernel density estimate for skewnessness
+#hist(sk.2, nclass=75, xlab="Skewnesses", main=c("Statistics", "histogram"))
+
+d1.3 <- density(sk.2, na.rm = TRUE)
+dn1.3 <- dnorm(d1.3$x, mean(sk.2, na.rm = TRUE), sd(sk.2, na.rm = TRUE))
+
+##histogram and kernel density estimate for kurtosis
+#hist(ku.2, nclass=75, xlab="kurtosis", main=c("Statistics", "histogram"))
+
+d1.4 <- density(ku.2, na.rm = TRUE)
+dn1.4 <- dnorm(d1.4$x, mean(ku.2, na.rm = TRUE), sd(ku.2, na.rm = TRUE))
+
+########### Computing the correlation coefficient of each stock with the S&P 500 index return ###########
+
+##Creating a new list with observation of the S&P500 index until 30/06/2007
+GSPC2 <- NULL
+GSPC2 <- GSPC[-(19962:nrow(GSPC)),]
+
+##Calculating log returns and log prices
+ln.GSPC2.prices = log(GSPC2)
+ln.GSPC2.returns = diff(ln.GSPC2.prices)*100
+
+##binding Stocks and GSPC matrices
+ln.GSPC2.Stocks2.returns <- NULL
+ln.GSPC2.Stocks2.returns <- cbind(ln.GSPC2.Stocks2.returns, ln.GSPC2.returns, ln.Stocks2.returns)
+
+##creating correlation coefficients matrix
+ln.GSPC2.Stocks2.returns <- ln.GSPC2.Stocks2.returns[ , ! apply( ln.GSPC2.Stocks2.returns , 2 , function(x) all(is.na(x)) ) ]
+
+cor.GSPC2.Stocks2 <- NULL
+cor.GSPC2.Stocks2 <- cbind(cor.GSPC2.Stocks2, cor(ln.GSPC2.Stocks2.returns, use="complete.obs"))
+cor.GSPC2.Stocks2 <- cor.GSPC2.Stocks2[,-(2:ncol(ln.GSPC2.Stocks2.returns))]
+
+##histogram and kernel density estimate for correlation coefficients
+#hist(cor.GSPC2.Stocks2, nclass=75, xlab="Means", main=c("Statistics", "histogram"))
+
+d1.5 <- density(cor.GSPC2.Stocks2, na.rm = TRUE)
+dn1.5 <- dnorm(d1.5$x, mean(cor.GSPC2.Stocks2), sd(cor.GSPC2.Stocks2))
+```
+```{r }
+
+########### after crisis ###########
+
+##Creating new stocks list for period after 30/06/2007
+Stocks3 <- NULL
+Stocks3 <- Stocks[-(1:11453),]
+
+##Calculating log returns and log prices
+ln.Stocks3.prices = log(Stocks3)
+ln.Stocks3.returns = diff(ln.Stocks3.prices)*100
+
+########### Computing descriptive statistics ###########
+#install.packages("matrixStats")
+#install.packages("moments")
+#library("matrixStats")
+#library("moments")
+
+mu.3 <- colMeans(ln.Stocks3.returns,na.rm = TRUE)
+sig2.3 <-  matrixStats::colVars(ln.Stocks3.returns, na.rm = TRUE)
+sk.3 <- moments::skewness(ln.Stocks3.returns,na.rm = TRUE)
+ku.3 <- moments::kurtosis(ln.Stocks3.returns,na.rm = TRUE)
+
+Statistics3 <- NULL
+Statistics3 <- cbind(Statistics3, mu.3, sig2.3, sk.3, ku.3)
+
+########### Graphical Analysis ###########
+
+##histogram and kernel density estimate for means
+library(fBasics)
+#hist(mu.3, nclass=75, xlab="Means", main=c("Statistics", "histogram"))
+
+d1.6 <- density(mu.3, na.rm = TRUE)
+dn1.6 <- dnorm(d1.6$x, mean(mu.3, na.rm = TRUE), sd(mu.3, na.rm = TRUE))
+
+##histogram and kernel density estimate for variances
+#hist(sig2.3, nclass=75, xlab="Variances", main=c("Statistics", "histogram"))
+
+d1.7 <- density(sig2.3, na.rm = TRUE)
+dn1.7 <- dnorm(d1.7$x, mean(sig2.3, na.rm = TRUE), sd(sig2.3, na.rm = TRUE))
+
+##histogram and kernel density estimate for skewnessness
+#hist(sk.3, nclass=75, xlab="Skewnesses", main=c("Statistics", "histogram"))
+
+d1.8 <- density(sk.3, na.rm = TRUE)
+dn1.8 <- dnorm(d1.8$x, mean(sk.3, na.rm = TRUE), sd(sk.3, na.rm = TRUE))
+
+##histogram and kernel density estimate for kurtosis
+#hist(ku.3, nclass=75, xlab="kurtosis", main=c("Statistics", "histogram"))
+
+d1.9 <- density(ku.3, na.rm = TRUE)
+dn1.9 <- dnorm(d1.9$x, mean(ku.3, na.rm = TRUE), sd(ku.3, na.rm = TRUE))
+
+########### Computing the correlation coefficient of each stock with the S&P 500 index return ###########
+
+##Creating a new list with observation of the S&P500 index after 30/06/2007
+GSPC3 <- NULL
+GSPC3 <- GSPC[-(1:19962),]
+##Calculating log prices and log returns
+ln.GSPC3.prices = log(GSPC3)
+ln.GSPC3.returns = diff(ln.GSPC3.prices)*100
+
+##binding Stocks and GSPC matrices
+ln.GSPC3.Stocks3.returns <- NULL
+ln.GSPC3.Stocks3.returns <- cbind(ln.GSPC3.Stocks3.returns, ln.GSPC3.returns, ln.Stocks3.returns)
+ln.GSPC3.Stocks3.returns <- ln.GSPC3.Stocks3.returns[ , ! apply( ln.GSPC3.Stocks3.returns , 2 , function(x) all(is.na(x)) ) ]
+
+##creating correlation coefficients matrix
+cor.GSPC3.Stocks3 <- NULL
+cor.GSPC3.Stocks3 <- cbind(cor.GSPC3.Stocks3, cor(ln.GSPC3.Stocks3.returns, use="complete.obs"))
+cor.GSPC3.Stocks3 <- cbind(cor.GSPC3.Stocks3[,-(2:as.numeric(ncol(ln.GSPC3.Stocks3.returns)))])
+
+##histogram and kernel density estimate for correlation coefficients
+#hist(cor.GSPC3.Stocks3, nclass=75, xlab="Means", main=c("Statistics", "histogram"))
+
+d1.10 <- density(cor.GSPC3.Stocks3, na.rm = TRUE)
+dn1.10 <- dnorm(d1.10$x, mean(cor.GSPC3.Stocks3, na.rm = TRUE), sd(cor.GSPC3.Stocks3, na.rm = TRUE))
+
+```
+
+```{r results=TRUE}
+plot(d1.1$x,d1.1$y,type='l', col="red", main=c("SP500 Stocks before crisis", "empirical density vs Gaussian"), xlab="Means", ylab="Density")
+lines(d1.1$x,dn1.1)
+
+library(knitr)
+mean <-mean(mu.2, na.rm = TRUE)
+median <- median(mu.2, na.rm = TRUE)
+sd <- sd(mu.2, na.rm = TRUE)
+kurtosis <- moments::kurtosis(mu.2, na.rm = TRUE)
+skewness <- moments::skewness(mu.2, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+
+plot(d1.6$x,d1.6$y,type='l', col="red", main=c("SP500 Stocks after crisis", "empirical density vs Gaussian"), xlab="Means", ylab="Density")
+lines(d1.6$x,dn1.6)
+
+library(knitr)
+mean <-mean(mu.3, na.rm = TRUE)
+median <- median(mu.3, na.rm = TRUE)
+sd <- sd(mu.3, na.rm = TRUE)
+kurtosis <- moments::kurtosis(mu.3, na.rm = TRUE)
+skewness <- moments::skewness(mu.3, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+A higher kurtosis, 17.71 against 6.26, and a higher skewness, 1.84 against -0.03, demonstrate that in the period before the financial crisis the means of the log-return of our sample were showing more extreme observations above the mean of 0.073%. Moreover, also the volatility of the means of log-returns is higher for the period before the financial crisis with a value of 5.2%, higher than 2 percentage points with respect the period after the crisis.
+
+
+```{r results=TRUE}
+plot(d1.2$x,d1.2$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Variances", ylab="Density")
+lines(d1.2$x,dn1.2)
+
+library(knitr)
+mean <-mean(sig2.2, na.rm = TRUE)
+median <- median(sig2.2, na.rm = TRUE)
+sd <- sd(sig2.2, na.rm = TRUE)
+kurtosis <- moments::kurtosis(sig2.2, na.rm = TRUE)
+skewness <- moments::skewness(sig2.2, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+
+plot(d1.7$x,d1.7$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Variances", ylab="Density")
+lines(d1.7$x,dn1.7)
+
+library(knitr)
+mean <-mean(sig2.3, na.rm = TRUE)
+median <- median(sig2.3, na.rm = TRUE)
+sd <- sd(sig2.3, na.rm = TRUE)
+kurtosis <- moments::kurtosis(sig2.3, na.rm = TRUE)
+skewness <- moments::skewness(sig2.3, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+
+```
+
+Both the mean and median of the variances of the sub-sample 1 are higher with respect to the ones of sub-sample 2; this suggests that overall the volatility of log-returns of the period before crisis was higher than the one of the period after crisis. Moreover, the distribution for the period before the financial crisis is also presenting a heavier right tail, demonstrated also by a higher kurtosis and skewness. Finally, the plot suggest that extreme observations are more common in sub-sample 1 rather than in sub-sample 2.
+
+
+```{r results=TRUE}
+
+plot(d1.3$x,d1.3$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Skewness", ylab="Density")
+lines(d1.3$x,dn1.3)
+
+library(knitr)
+mean <-mean(sk.2, na.rm = TRUE)
+median <- median(sk.2, na.rm = TRUE)
+sd <- sd(sk.2, na.rm = TRUE)
+kurtosis <- moments::kurtosis(sk.2, na.rm = TRUE)
+skewness <- moments::skewness(sk.2, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+
+plot(d1.8$x,d1.8$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Skewness", ylab="Density")
+lines(d1.8$x,dn1.8)
+
+library(knitr)
+mean <-mean(sk.3, na.rm = TRUE)
+median <- median(sk.3, na.rm = TRUE)
+sd <- sd(sk.3, na.rm = TRUE)
+kurtosis <- moments::kurtosis(sk.3, na.rm = TRUE)
+skewness <- moments::skewness(sk.3, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+
+```
+
+The mean and the median for the skewness of the two sub-samples are very similar and close to each other. On a separate note, a lower standard deviation for the sub-sample 2 with respect to sub-sample 1 suggests that the position of presence of more mass in the distribution of log-returns is subject to smaller changes.
+
+```{r results=TRUE}
+plot(d1.4$x,d1.4$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Kurtosis", ylab="Density")
+lines(d1.4$x,dn1.4)
+
+library(knitr)
+mean <-mean(ku.2, na.rm = TRUE)
+median <- median(ku.2, na.rm = TRUE)
+sd <- sd(ku.2, na.rm = TRUE)
+kurtosis <- moments::kurtosis(ku.2, na.rm = TRUE)
+skewness <- moments::skewness(ku.2, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+
+plot(d1.9$x,d1.9$y,type='l', col="red", main=c("SP500 Stocks", "empirical density vs Gaussian"), xlab="Kurtosis", ylab="Density")
+lines(d1.9$x,dn1.9)
+
+library(knitr)
+mean <-mean(ku.3, na.rm = TRUE)
+median <- median(ku.3, na.rm = TRUE)
+sd <- sd(ku.3, na.rm = TRUE)
+kurtosis <- moments::kurtosis(ku.3, na.rm = TRUE)
+skewness <- moments::skewness(ku.3, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+While kurtosis and skewness for the two sub-samples are pretty close to each other, and, thus, suggest that the proability of high extreme kurtosis remained the same over time. However, a notable higer mean of kurtosis for sub-sample 1, equal to 41 against the 18 of sub-sample 2, and a much higher standard deviation for sub-sample 1 suggest that the magnitude of probable changes in the kurtosis of log-returns was much higher in the period before the crisis.
+
+```{r results=TRUE}
+plot(d1.5$x,d1.5$y,type='l', col="red", main=c("GSPC and Stocks", "empirical density vs Gaussian"), xlab="Correlations", ylab="Density")
+lines(d1.5$x,dn1.5)
+
+library(knitr)
+mean <-mean(cor.GSPC2.Stocks2, na.rm = TRUE)
+median <- median(cor.GSPC2.Stocks2, na.rm = TRUE)
+sd <- sd(cor.GSPC2.Stocks2, na.rm = TRUE)
+kurtosis <- moments::kurtosis(cor.GSPC2.Stocks2, na.rm = TRUE)
+skewness <- moments::skewness(cor.GSPC2.Stocks2, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+
+plot(d1.10$x,d1.10$y,type='l', col="red", main=c("GSPC and Stocks", "empirical density vs Gaussian"), xlab="Correlations", ylab="Density")
+lines(d1.10$x,dn1.10)
+
+library(knitr)
+mean <-mean(cor.GSPC3.Stocks3, na.rm = TRUE)
+median <- median(cor.GSPC3.Stocks3, na.rm = TRUE)
+sd <- sd(cor.GSPC3.Stocks3, na.rm = TRUE)
+kurtosis <- moments::kurtosis(cor.GSPC3.Stocks3, na.rm = TRUE)
+skewness <- moments::skewness(cor.GSPC3.Stocks3, na.rm = TRUE)
+
+DescrStatistics <- cbind(mean, median, sd, kurtosis, skewness)
+
+kable(DescrStatistics, caption = "Statistics")
+```
+
+The mean and the median of the correlation coefficients for sub-sample 1 are slighlty higher than those of the sub-sample 2; whereas all the other statistics remain pretty stable over time with the exception of the variance that decreased.
+
+## 5) Testing stability over time with the Kolmogorov Smirnov test
+
+We will be using the Kolmogorov Smirnov test in order to test whether the non parametric densities of the first four moments and of the correlation coefficients are similar for both sub-samples.
+
+```{r results=TRUE}
+ks.test(mu.2, mu.3)
+```
+```{r results=TRUE}
+ks.test(sig2.2, sig2.3)
+```
+```{r results=TRUE}
+ks.test(sk.2, sk.3)
+```
+```{r results=TRUE}
+ks.test(ku.2, ku.3)
+```
+```{r results=TRUE}
+ks.test(cor.GSPC2.Stocks2, cor.GSPC3.Stocks3)
+```
+
+All the tests lead to the same conclusion; we reject the null hypotesis that states that the distributions of the first four moments and of the correlation coefficients of the two sub-samples are similar. The only test that is showing a reasonable but still insignificant p-value is the Kologorow Smirnov test for the variances.
+
+## 6) 10 best and worst-performing stocks in year 2019
+
+Computing the year stock returns for the year 2019, we have selected the ten best-performing the ten worst-performing stocks in our sample, which is composed by the 505 stocks included in the S&P500 index as of today and the index itself. The obtained result is represented below showing that Abbiomed Inc. (ABMD), operating in the health care sector, is the worst-performing stock and Advanced Micro Devices Inc. (AMD), operating in the information technology sector, is the top-performing stock.
+
+```{r }
+####################################################### 5 #######################################################
+
+###################### Computing 2019 year returns for all stocks and the S&P 500 index ######################
+###################### List the top ten and bottom ten stocks in a table together with their year return.  ######################
+
+##Creating list of stocks with all observations of year 2019
+Stocks4 <- NULL
+Stocks4 <- Stocks[-(1:14348),]
+Stocks4 <- Stocks4[-(253:nrow(Stocks4))]
+
+##Calculating log prices and log returns
+ln.Stocks4.prices = log(Stocks4)
+ln.Stocks4.returns = diff(ln.Stocks4.prices)*100
+
+##Creating list of GSPC with all observations of year 2019
+GSPC4 <- NULL
+GSPC4 <- GSPC[-(1:22857),]
+GSPC4 <- GSPC4[-(253:nrow(GSPC4))]
+
+##Calculating log prices and log returns
+ln.GSPC4.prices = log(GSPC4)
+ln.GSPC4.returns = diff(ln.GSPC4.prices)*100
+
+##binding Stocks and GSPC matrices
+ln.GSPC4.Stocks4.returns <- NULL
+ln.GSP4C.Stocks4.returns <- cbind(ln.GSPC4.Stocks4.returns, ln.GSPC4.returns, ln.Stocks4.returns)
+
+##computing year returns and ordering in ascending fashion
+rtn1y <- NULL
+rtn1y <- cbind((exp(colSums(ln.GSP4C.Stocks4.returns,na.rm = TRUE)/100)-1)*100)
+rtn1y <- cbind(rtn1y[order( rtn1y[,1] ),]) #ascending listing
+
+m.rtn1y <- NULL
+m.rtn1y <- rtn1y[-(11:nrow(rtn1y)),] #top ten bottom year returns
+m.rtn1y <- cbind(m.rtn1y)
+M.rtn1y <- NULL
+M.rtn1y <- rtn1y[-(1:as.numeric(nrow(rtn1y)-10)),] #top ten year returns
+M.rtn1y <- cbind(M.rtn1y)
+
+library(knitr)
+```
+```{r results=TRUE}
+kable(m.rtn1y, caption = "Bottom Ten Stocks")
+
+kable(M.rtn1y, caption = "Top Ten Stocks")
+```
