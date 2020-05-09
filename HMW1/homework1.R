@@ -29,7 +29,6 @@ companies <- GetSP500Stocks()
 stock <- NULL
 
 for (row in gsub('[.]', '-', companies$Tickers)){
-  #stock_prices <- tq_get(row, from = start_date, to = end_date)
   stock_prices = getSymbols(row, from = start_date, src = "yahoo", 
                             verbose = FALSE, auto.assign = FALSE)[,6]
   stock = cbind(stock, stock_prices)
@@ -64,7 +63,7 @@ diff_SP500 = data.frame(diff_SP500[(nrow(diff_SP500)-rows+1):nrow(diff_SP500),])
 #### QUESTION 1 ####
 
 ## basic statistics
-mean_stock = colMeans(diff_stock, na.rm = TRUE, dims = 1) #mean(diff_stock, na.rm = TRUE)
+mean_stock = colMeans(diff_stock, na.rm = TRUE, dims = 1)
 variance_stock = colVars(diff_stock, na.rm = TRUE)
 skewness_stock = colSkewness(diff_stock, na.rm = TRUE)
 kurtosis_stock = colKurtosis(diff_stock, na.rm = TRUE)
@@ -92,6 +91,7 @@ non_parametric <- function(stock_stats, xname, yname, year){
     labs(x = xname, y = yname) + 
     scale_color_manual(name="Legend", values = c("black","red")) + 
     theme(legend.position = c(0.985, 0.985), legend.justification = c("right", "top"))
+    #theme(legend.position = c(0.015, 0.985), legend.justification = c("left", "top"))
   
   ggsave(paste('./plots/', xname, year, ".png", sep = ''))
 }
@@ -203,13 +203,13 @@ ks.test(correlation_SP_2007, correlation_SP_2009)
 
 # SP500 #
 diff_SP_500_2019= diff_SP500[year(row.names(diff_SP500)) == "2019",]
-return_SP_2019 = exp(sum(diff_SP_500_2019, na.rm = TRUE)/100)
+return_SP_2019 = exp(sum(diff_SP_500_2019, na.rm = TRUE)/100) - 1 
 
 # stocks # 
 diff_stock_2019 = diff_stock[year(row.names(diff_stock)) == "2019",]
 diff_stock_2019 = diff_stock_2019[,colSums(is.na(diff_stock_2019))<nrow(diff_stock_2019)]
 diff_stock_2019 = as.data.frame(diff_stock_2019)
-return_2019 = exp(colSums(diff_stock_2019, na.rm = TRUE)/100)
+return_2019 = exp(colSums(diff_stock_2019, na.rm = TRUE)/100) - 1
 
 # top 10 performing stocks
 top_2019 = return_2019[order(return_2019, decreasing = TRUE)]
@@ -217,18 +217,17 @@ top_2019 = return_2019[order(return_2019, decreasing = TRUE)]
 # worst 10 performing stocks
 worst_2019 = return_2019[order(return_2019, decreasing = FALSE)]
 
-
 ## 2020 ##
 
 # SP500 #
 diff_SP_500_2020= diff_SP500[year(row.names(diff_SP500)) == "2020",]
-return_SP_2020 = exp(sum(diff_SP_500_2020, na.rm = TRUE)/100)
+return_SP_2020 = exp(sum(diff_SP_500_2020, na.rm = TRUE)/100) - 1
 
 # stocks # 
 diff_stock_2020 = diff_stock[year(row.names(diff_stock)) == "2020",]
 diff_stock_2020 = diff_stock_2020[,colSums(is.na(diff_stock_2020))<nrow(diff_stock_2020)]
 diff_stock_2020 = as.data.frame(diff_stock_2020)
-return_2020 = exp(colSums(diff_stock_2020, na.rm = TRUE)/100)
+return_2020 = exp(colSums(diff_stock_2020, na.rm = TRUE)/100) - 1
 
 # top 10 performing stocks
 top_2020 = return_2020[order(return_2020, decreasing = TRUE)]
