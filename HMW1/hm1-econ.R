@@ -34,10 +34,10 @@ for (row in gsub('[.]', '-', companies$Tickers)){
   stock = cbind(stock, stock_prices)
 }
 stock = data.frame(stock)
-write.csv(stock,'./data/stock.csv')
+#write.csv(stock,'./data/stock.csv')
 
 # load csv (faster when the data has already been downloaded)
-stock = read.csv('./data/stock.csv', row.names = 1)
+#stock = read.csv('./data/stock.csv', row.names = 1)
 
 # check NA
 sum(is.na(stock))
@@ -234,3 +234,4 @@ top_2020 = return_2020[order(return_2020, decreasing = TRUE)]
 
 # worst 10 performing stocks
 worst_2020 = return_2020[order(return_2020, decreasing = FALSE)]
+
