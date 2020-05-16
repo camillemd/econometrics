@@ -27,3 +27,31 @@ VIX = data.frame(VIX)
 ggplot(VIX, aes(x = as.Date(rownames(VIX)), y = VIX.Adjusted)) + 
   geom_line()  +
   labs(x = "2016", y = "VIX Adjusted") 
+
+## Imported Options Data ##
+options = 
+
+#### QUESTION 1 ####
+
+# check NA
+sum(is.na(options))
+
+#### QUESTION 2 ####
+
+
+#### QUESTION 3 ####
+
+
+#### QUESTION 4 ####
+
+
+#### QUESTION 5 ####
+
+
+#### QUESTION 6 ####
+
+
+#### QUESTION 7 ####
+
+
+#### EXTRA ####
