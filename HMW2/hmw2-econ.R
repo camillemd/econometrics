@@ -29,23 +29,72 @@ ggplot(VIX, aes(x = as.Date(rownames(VIX)), y = VIX.Adjusted)) +
   labs(x = "2016", y = "VIX Adjusted") 
 
 ## Imported Options Data ##
-options = 
+options = read.csv('./SPX_2016_options_T3_2020.csv', header = FALSE)
 
 #### QUESTION 1 ####
 
+# V1: SPX sector ID
+# V2: date 
+# V3: maturity
+# V4: maturity
+# V5: difference
+# V6: right to buy 
+# V7: option price
+# V8: in the money - ask
+# V9: out of money - bid
+# V10: 
+# V11: 
+# V12: volume change
+# V13: action price
+# V14: 
+# V15: 
+# V16: 
+# V17: 
+
 # check NA
-sum(is.na(options))
+colSums(is.na(options))
+
+# replace NA values (NaN) with 0
+#options[is.na(options)] = 0
+#options[is.na(options)] = median(options$V12, na.rm = TRUE)
+
+# delete NA rows
+options = na.omit(options)
 
 #### QUESTION 2 ####
-
+options$price = rowMeans(cbind(options$V8, options$V9))
 
 #### QUESTION 3 ####
-
+options = options[options$price > 0.05,]
 
 #### QUESTION 4 ####
-
+# call
+options.out.money.call = options[(options$price < options$V7) & (options$V6 == 1),]
+# put
+options.out.money.put = options[(options$price > options$V7) & (options$V6 == -1),]
+# binding conditions
+options.out.money = rbind(options.out.money.call, options.out.money.put)
 
 #### QUESTION 5 ####
+
+# implied volatility function from RiskNeutralVolatilitySkewKurt_JVKR_3
+library("pracma")
+library("derivmkts")
+
+ivol=function(K,IV,Kall)
+{
+  Kall[K[length(K)]<Kall]=K[length(IV)];
+  Kall[K[1]>Kall]=K[1]
+  y= interp1(K,IV,xi=Kall,method="spline");
+  
+  if (sum(y<0)>0){
+    Kall[K[length(K)]<Kall]=K[length(IV)];
+    Kall[K[1]>Kall]=K[1]
+    y= interp1(K,IV,xi=Kall,method="linear");}
+  return(y)
+}
+
+
 
 
 #### QUESTION 6 ####
