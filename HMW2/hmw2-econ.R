@@ -77,6 +77,25 @@ options.out.money = rbind(options.out.money.call, options.out.money.put)
 
 #### QUESTION 5 ####
 
+
+
+
+#Black and Scholes
+def BlackScholes(CallPutFlag,S,X,v,r,T):
+  
+  d1 = (np.log(S/X)+(r+v*v/2.)*T)/(v*np.sqrt(T))
+
+d2 = d1-v*np.sqrt(T)
+if CallPutFlag=="C":
+  P = S*norm.cdf(d1) - X*np.exp(-r*T)*norm.cdf(d2)
+
+else:
+  P = -S*norm.cdf(-d1) + X*np.exp(-r*T)*norm.cdf(-d2)
+return P
+
+
+#### JEROEN'S ####
+
 # implied volatility function from RiskNeutralVolatilitySkewKurt_JVKR_3
 library("pracma")
 library("derivmkts")
