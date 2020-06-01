@@ -1,0 +1,325 @@
+---
+title: "Reproducing-updating Fama-French paper"
+output: pdf_document
+---
+
+
+
+```{r, echo=FALSE}
+todayY <- as.numeric(format(Sys.Date(), "%Y"))
+todayM <- as.numeric(format(Sys.Date(), "%m"))
+
+temp <- tempfile()
+download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip",temp, mode="wb")
+factors <- read.csv(unzip(temp, "F-F_Research_Data_Factors.CSV"), sep = ",", skip = 3, header = TRUE, nrows = 6+(todayY-1927)*12+todayM-2)
+
+download.file("http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/25_Portfolios_5x5_CSV.zip",temp, mode="wb")
+portfolios <- read.csv(unzip(temp, "25_Portfolios_5x5.CSV"), sep = ",", skip = 15, header = TRUE,nrows = 6+(todayY-1927)*12+todayM-2)
+```
+
+
+```{r, message=FALSE, echo=F}
+##libraries
+
+library(zoo)
+library(lmtest) #for coeftest
+library(sandwich) # for NeweyWest and vcovHAC
+library(knitr) # for Rmd tables
+```
+
+```{r, message=FALSE, echo=F}
+OLS <- function(y, X, robust="none"){
+  T = dim(X)[1]
+  K = dim(X)[2]+1
+  X = cbind(rep(1,T),X)
+  b = solve(t(X)%*%X)%*%(t(X)%*%y)
+  res = y-X%*%b
+  
+  if(robust=="none"){
+    sig2 = 1/(T-K)* (t(res)%*%res)
+    var_b = diag(solve(t(X)%*%X)%*%diag(rep(sig2,K)))
+  }
+  if(robust=="White"){
+    invXpX = solve(t(X)%*%X)
+    XpEuupX = 0
+    for(i in 1:T){
+      x = t(X[i,])
+      r2 = res[i]^2
+      XpEuupX = XpEuupX + (T*r2)/(T-K)* t(x)%*%x
+    }
+    var_b = diag(invXpX %*% XpEuupX %*% invXpX)
+  }
+  if(robust=="NW"){
+    invXpX = solve(t(X)%*%X)
+    XpEuupX_1 = 0
+    for(i in 1:T){
+      x = t(X[i,])
+      r2 = res[i]^2
+      XpEuupX_1 = XpEuupX_1 + (T)/(T-K)* r2 * t(x)%*%x
+    }
+    XpEuupX_2_tot = 0
+    M = 12
+    for (j in 1:M) {
+      kern = 1 - j/(M-1)
+      XpEuupX_2_part = 0
+      start=j+1
+      for(i in start:T){
+        xt = t(X[i,])
+        xt_j = t(X[i-j,])
+        utut_j = res[i]*res[i-j]
+        xtpxt_j = t(xt)%*%xt_j
+        xt_jpxt = t(xt_j)%*%xt
+        XpEuupX_2_part = XpEuupX_2_part + utut_j * (xtpxt_j + xt_jpxt)
+      }
+      XpEuupX_2_tot = XpEuupX_2_tot + (T)/(T-K) * kern * XpEuupX_2_part
+    }
+    XpEuupX = XpEuupX_1 +XpEuupX_2_tot
+    var_b = diag(invXpX %*% XpEuupX %*% invXpX)
+  }
+  
+  std_b = sqrt(var_b)
+  tstat = b/std_b
+  pval = 2 * (1-pnorm(abs(tstat)))
+  
+  R2 = 1 - (t(res)%*%res)/(t(y-mean(y))%*%(y-mean(y)))
+  print(c("R2",R2))
+  
+  rho_1 = 1/T*sum(res[2:T]*res[1:T-1])
+  print(c("rho_1(u)",rho_1))
+  
+  DW=sum((res[2:T]-res[1:T-1])^2)/sum(res*res)
+  print(c("DW",DW))
+  
+  z_DW=sqrt(T)*(DW/2 - 1)
+  print(c("z_DW",z_DW))
+  
+  pval_z = 2 * (1-pnorm(abs(z_DW)))
+  print(c("pval z_DW",pval_z))
+  
+  value <- cbind(b,std_b,tstat,pval)
+  return(value)
+}
+```
+
+
+# Descriptive statistics for the 25 portfolios:
+
+We report in a table the means and standard deviations of the excess returns $R_i-R_f$ for the 25 portfolios. 
+
+```{r kable, echo = F}
+#portfoliosA <- portfolios[which(portfolios$X>=196307 & portfolios$X<=199312),]
+#factorsA <- factors[which(factors$X>=196307 & factors$X<=199312),]
+portfoliosA <- portfolios[which(portfolios$X>=196307),]
+factorsA <- factors[which(factors$X>=196307),]
+
+factorsARF <- factorsA$RF
+Ri_Rf1 <- portfoliosA[,-1]-factorsARF
+
+#  means and standard deviations of Ri-Rf
+means = matrix(rep(0,25), nrow=5, ncol=5)
+sd = matrix(rep(0,25), nrow=5, ncol=5)
+for (i in 1:25){
+  means[i] = mean(Ri_Rf1[,i])
+  sd[i] = sqrt(var(Ri_Rf1[,i]))
+}
+
+# print the results
+panel_A_means = t(means)
+colnames(panel_A_means) = c("Low", "2", "3", "4", "High")
+rownames(panel_A_means) = c("Small", "2", "3", "4", "Big")
+kable(panel_A_means, digits = 4, caption = "Panel A means")
+
+panel_A_sd = t(sd)
+colnames(panel_A_sd) = c("Low", "2", "3", "4", "High")
+rownames(panel_A_sd) = c("Small", "2", "3", "4", "Big")
+kable(panel_A_sd, digits = 4, caption = "Panel A sd")
+```
+
+Overall, it appears that the excess return of a portfolio is an increasing function of its BE/ME, and a decreasing function of its size. The smaller the portfolio is, the higher its volatility: the lack of diversification makes the volatility high. The higher is a portfolio BE/ME, the lower is its volatility. 
+
+
+# Descriptive statistics for the market excess return and the factors:
+
+We report in a similarly structured table mean, standard deviation, skewness, and excess kurtosis for the market excess return ($R_M-R_f$); for the difference between the return on a portfolio of small stocks and the return on a portfolio of large stocks (SMB); and for the difference between the return on a portfolio of high-book-to-market stocks and the return on a portfolio of low-book-to-market stocks (HML). 
+
+ 
+
+```{r, echo = F}
+factors1 <- factorsA[,-1]
+factors1 <- factors1[,-4]
+
+means_fac = matrix(rep(0,3), ncol=3)
+sd_fac = matrix(rep(0,3), ncol=3)
+sk_fac = matrix(rep(0,3), ncol=3)
+kurt_fac = matrix(rep(0,3), ncol=3)
+for (i in 1:3){
+  means_fac[i] = mean(factors1[,i])
+  sd_fac[i] = sqrt(var(factors1[,i]))
+  sk_fac[i] = mean((factors1[,i]-means_fac[i])^3)/(sd_fac[i]^3)
+  kurt_fac[i] = mean((factors1[,i]-means_fac[i])^4)/(sd_fac[i]^4)
+  plot(factors1[,i], typ="l")
+}
+
+  # Table results
+res_fac <- matrix(data.frame(means_fac,sd_fac,sk_fac,kurt_fac), nrow=3)
+res_fac <- t(res_fac)
+rownames(res_fac) <- c("means", "sd", "skewness", "kurtosis excess")
+colnames(res_fac) <- c("Mkt excess", "SMB", "HML")
+kable(res_fac, digits = 4)
+```
+
+
+
+
+# OLS regressions:
+
+We estimate the model
+$$ R_i-R_f=a_i+b_i(R_M-R_f)+s_iSMB +h_iHML + e_i $$
+which is Equation (2) in the original FF paper.
+
+
+```{r, echo = F}
+
+kable(OLS(Ri_Rf1[,1],cbind(factorsA$Mkt.RF,factorsA$SMB,factorsA$HML),"none"), digits = 4, caption = "OLS")
+kable(OLS(Ri_Rf1[,1],cbind(factorsA$Mkt.RF,factorsA$SMB,factorsA$HML),"NW"), digits = 4, caption = "NW")
+
+```
+
+Note the difference in standard errors between standard OLS and Newey-West procedures. Now, we estimate for all book-to-market equity quintiles and all sizes excess returns portfolios by OLS (i.e. we replicate the results reported in Table 1 - panel B). 
+
+
+```{r, echo = F}
+
+coef.reg <- matrix(0, nrow=4, ncol=4)
+
+tabs.names <- c("a", "b", "s", "h")
+
+Panel.B.a<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.b<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.s<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.h<-matrix(0,nrow = 5, ncol = 5)
+
+Panel.B.a.t<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.b.t<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.s.t<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.h.t<-matrix(0,nrow = 5, ncol = 5)
+
+n<-0
+for (i in 1:5){
+  for (j in 1:5){
+    n=n+1
+    lmodel1 <- lm(Ri_Rf1[,n] ~ factorsA$Mkt.RF + factorsA$SMB + factorsA$HML)
+    coef.reg <- coef(summary(lmodel1))
+    Panel.B.a[i,j]<-coef.reg[1,1]
+    Panel.B.b[i,j]<-coef.reg[2,1]
+    Panel.B.s[i,j]<-coef.reg[3,1]
+    Panel.B.h[i,j]<-coef.reg[4,1]
+    
+    Panel.B.a.t[i,j]<-coef.reg[1,3]
+    Panel.B.b.t[i,j]<-coef.reg[2,3]
+    Panel.B.s.t[i,j]<-coef.reg[3,3]
+    Panel.B.h.t[i,j]<-coef.reg[4,3]
+  }
+}
+
+colnames(Panel.B.a) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.a) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.b) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.b) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.s) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.s) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.h) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.h) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.a.t) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.a.t) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.b.t) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.b.t) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.s.t) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.s.t) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.h.t) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.h.t) = c("Small", "2", "3", "4", "Big")
+
+kable(Panel.B.a, digits = 4, caption = "Panel.B.a")
+kable(Panel.B.b, digits = 4, caption = "Panel.B.b")
+kable(Panel.B.s, digits = 4, caption = "Panel.B.s")
+kable(Panel.B.h, digits = 4, caption = "Panel.B.h")
+kable(Panel.B.a.t, digits = 4, caption = "Panel.B.a.t")
+kable(Panel.B.b.t, digits = 4, caption = "Panel.B.b.t")
+kable(Panel.B.s.t, digits = 4, caption = "Panel.B.s.t")
+kable(Panel.B.h.t, digits = 4, caption = "Panel.B.h.t")
+
+```
+
+
+
+# Robust standard errors:
+
+
+If we have doubt about heteroskedasticity and/or serial correlation in the residuals, we can compute Newey-West standard errors.
+
+
+ 
+ 
+```{r, echo = F}
+
+Panel.B.a.tW<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.b.tW<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.s.tW<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.h.tW<-matrix(0,nrow = 5, ncol = 5)
+
+Panel.B.a.tNW<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.b.tNW<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.s.tNW<-matrix(0,nrow = 5, ncol = 5)
+Panel.B.h.tNW<-matrix(0,nrow = 5, ncol = 5)
+
+n<-0
+for (i in 1:5){
+  for (j in 1:5){
+    n=n+1
+    lm <- lm(Ri_Rf1[,n] ~ factorsA$Mkt.RF + factorsA$SMB + factorsA$HML)
+    
+    Panel.B.a.tW[i,j]<-coeftest(lm, vcov. = vcovHC, type=c("HC"))[1,3]
+    Panel.B.b.tW[i,j]<-coeftest(lm, vcov. = vcovHC, type=c("HC"))[2,3]
+    Panel.B.s.tW[i,j]<-coeftest(lm, vcov. = vcovHC, type=c("HC"))[3,3]
+    Panel.B.h.tW[i,j]<-coeftest(lm, vcov. = vcovHC, type=c("HC"))[4,3]
+    
+    Panel.B.a.tNW[i,j]<-coeftest(lm, vcov. = NeweyWest)[1,3]
+    Panel.B.b.tNW[i,j]<-coeftest(lm, vcov. = NeweyWest)[2,3]
+    Panel.B.s.tNW[i,j]<-coeftest(lm, vcov. = NeweyWest)[3,3]
+    Panel.B.h.tNW[i,j]<-coeftest(lm, vcov. = NeweyWest)[4,3]
+  }
+}
+
+colnames(Panel.B.a.tW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.a.tW) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.b.tW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.b.tW) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.s.tW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.s.tW) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.h.tW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.h.tW) = c("Small", "2", "3", "4", "Big")
+
+colnames(Panel.B.a.tNW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.a.tNW) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.b.tNW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.b.tNW) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.s.tNW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.s.tNW) = c("Small", "2", "3", "4", "Big")
+colnames(Panel.B.h.tNW) = c("Low", "2", "3", "4", "High")
+rownames(Panel.B.h.tNW) = c("Small", "2", "3", "4", "Big")
+
+
+kable(Panel.B.a.tNW, digits = 4, caption = "Panel.B.a.tNW")
+kable(Panel.B.b.tNW, digits = 4, caption = "Panel.B.b.tNW")
+kable(Panel.B.s.tNW, digits = 4, caption = "Panel.B.s.tNW")
+kable(Panel.B.h.tNW, digits = 4, caption = "Panel.B.h.tNW")
+
+```
+
+
+
+
+
+
+
+
