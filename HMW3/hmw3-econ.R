@@ -15,6 +15,9 @@ library(BatchGetSymbols)
 library(robustbase)
 library(timeSeries)
 library(knitr)
+library(factoextra)
+library(NbClust)
+
 #library(Rfast)
 #library(fBasics)
 
@@ -237,8 +240,15 @@ ggplot() +
   labs(x = 'Company Names', y = 'R² Predictability Score')
 ggsave('./plots/clusters-stock-daily.png')
 
+## elbow plot to determine number of clusters
+elbow = data.frame(R2_stock$R2)
+fviz_nbclust(elbow, kmeans, method = "wss") +
+  geom_vline(xintercept = 3, linetype = 2) + 
+  labs(subtitle = "Elbow method")
+ggsave('./plots/elbow-daily.png')
+
 ## clustering
-clusters = kmeans(R2_stock$R2, 5)
+clusters = kmeans(R2_stock$R2, 3)
 R2_stock$cluster = as.character(clusters$cluster)
 
 ggplot() +
@@ -249,8 +259,8 @@ ggsave('./plots/predicted-clusters-stock-daily.png')
 
 #### QUESTION 6 (Daily) ####
 
-highest = ff_outputs[order(-ff_outputs[,7]),][1:5,]
-lowest = ff_outputs[order(ff_outputs[,7]),][1:5,]
+highest = ff_outputs[order(-ff_outputs[,1]),][1:5,]
+lowest = ff_outputs[order(ff_outputs[,1]),][1:5,]
 
 # clean output
 kable(highest)
@@ -441,8 +451,15 @@ ggplot() +
   labs(x = 'Company Names', y = 'R² Predictability Score')
 ggsave('./plots/clusters-stocks-monthly.png')
 
+## elbow plot to determine number of clusters
+elbow = data.frame(R2_stock$R2)
+fviz_nbclust(elbow, kmeans, method = "wss") +
+  geom_vline(xintercept = 3, linetype = 2) + 
+  labs(subtitle = "Elbow method")
+ggsave('./plots/elbow-monthly.png')
+
 ## clustering
-clusters = kmeans(R2_stock$R2, 5)
+clusters = kmeans(R2_stock$R2, 3)
 R2_stock$cluster = as.character(clusters$cluster)
 
 ggplot() +
@@ -454,8 +471,8 @@ ggsave('./plots/predicted-clusters-stocks-monthly.png')
 
 #### QUESTION 6 (Monthly) ####
 
-highest = ff_outputs[order(-ff_outputs[,7]),][1:5,]
-lowest = ff_outputs[order(ff_outputs[,7]),][1:5,]
+highest = ff_outputs[order(-ff_outputs[,1]),][1:5,]
+lowest = ff_outputs[order(ff_outputs[,1]),][1:5,]
 
 # clean output
 kable(highest)
