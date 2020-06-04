@@ -9,12 +9,13 @@ setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 # libraries
 library(tidyquant)
+library(quantmod)
 library(ggplot2)
 library(BatchGetSymbols)
 library(robustbase)
 library(timeSeries)
 library(knitr)
-library(Rfast)
+#library(Rfast)
 #library(fBasics)
 
 #### DATA ####
@@ -35,6 +36,8 @@ for (row in gsub('[.]', '-', companies$Tickers)){
   stock = cbind(stock, stock_prices)
 }
 stock = data.frame(stock)
+
+#write.csv(stock,'./stock.csv')
 
 # check NA
 sum(is.na(stock)) # some stocks have NA until 2020-03-19
@@ -131,7 +134,27 @@ kable(statistics_ff)
 #### QUESTION 3 (Daily) ####
 
 ## non-parametrics density
+non_parametric <- function(df, name){
+  
+  density <- density(df, na.rm = TRUE)
+  density_data = tibble(density$x, density$y)
+  
+  ggplot(density_data, aes(x = density$x, y = density$y)) + 
+    geom_line() + 
+    labs(x = paste('Range of', name) , y = 'Frequency Density')
+  
+  ggsave(paste('./plots/daily-', name, ".png", sep = ''))
+}
 
+baal=data.frame(ff_outputs)
+non_parametric(baal$beta0, name = 'beta0')
+non_parametric(baal$beta1, name = 'beta1')
+non_parametric(baal$beta2, name = 'beta2')
+non_parametric(baal$beta3, name = 'beta3')
+non_parametric(baal$beta4, name = 'beta4')
+non_parametric(baal$beta5, name = 'beta5')
+non_parametric(baal$tvalue, name = 'tvalue')
+non_parametric(baal$R2, name = 'R²')
 
 #### QUESTION 4 (Daily) ####
 
@@ -317,46 +340,27 @@ kable(statistics_ff)
 #### QUESTION 3 (Monthly) ####
 
 ## non-parametrics density
-
-for (i in 1:dim(ff_outputs)[2]){
+non_parametric <- function(df, name){
   
-  
-}
-
-library(kdensity)
-
-kde = kdensity(ff_outputs[,1])
-
-plot(kde)
-lines(kde, plot_start = TRUE, col = "red")
-
-# histogram representation
-hist(ff_outputs[,1], nclass=100, xlab = 'Beta_0')
-
-# plot non-parametric densities
-non_parametric <- function(ff_stats, xname, yname, year){
-  density <- density(ff_stats, na.rm = TRUE)
-  #normal <- dnorm(density$x, mean(ff_stats, na.rm = TRUE), sd(ff_stats, na.rm = TRUE))
-  
+  density <- density(df, na.rm = TRUE)
   density_data = tibble(density$x, density$y)
-  #normal_data = tibble(density$x, normal)
   
   ggplot(density_data, aes(x = density$x, y = density$y)) + 
-    geom_line() +
-    #geom_line(aes(x = density$x, y = normal, color = 'Normal'), data = normal_data) + 
-    labs(x = xname, y = yname)
-  # + scale_color_manual(name="Legend", values = c("black","red"))
-  # + theme(legend.position = c(0.985, 0.985), legend.justification = c("right", "top"))
-  # +theme(legend.position = c(0.015, 0.985), legend.justification = c("left", "top"))
+    geom_line() + 
+    labs(x = paste('Range of', name) , y = 'Frequency Density')
   
-  #ggsave(paste('./plots/', xname, year, ".png", sep = ''))
+  ggsave(paste('./plots/monthly-', name, ".png", sep = ''))
 }
 
-# TO BE CONTINUED 
-# names = c('beta0', 'beta1', 'beta2', 'beta3', 'beta4', 'beta5', 'tvalue', 'R2')
-#for (i in number of statistics){
-#  non_parametric(ff_stats = ff_outputs[,i], names[c(i)], 'Frequency', 'All')
-#}
+baal=data.frame(ff_outputs)
+non_parametric(baal$beta0, name = 'beta0')
+non_parametric(baal$beta1, name = 'beta1')
+non_parametric(baal$beta2, name = 'beta2')
+non_parametric(baal$beta3, name = 'beta3')
+non_parametric(baal$beta4, name = 'beta4')
+non_parametric(baal$beta5, name = 'beta5')
+non_parametric(baal$tvalue, name = 'tvalue')
+non_parametric(baal$R2, name = 'R²')
 
 #### QUESTION 4 (Monthly) ####
 
@@ -456,5 +460,3 @@ lowest = ff_outputs[order(ff_outputs[,7]),][1:5,]
 # clean output
 kable(highest)
 kable(lowest)
-
-#### QUESTION 8 ####
